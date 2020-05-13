@@ -1,20 +1,31 @@
 package cz.mendelu.dnaAnalyser.sequence;
-
 import cz.mendelu.dnaAnalyser.sequence.stream.Window;
 
 public class Result {
 
     private String sequence;
-    private Integer position;
+    private String niceSequence;
+    private Integer startPosition;
+    private Integer endPosition;
     private Integer length;
     private Double score;
     private String model;
+    private Integer cSequences;
+    private Integer totalSpaces;
+
+    private Boolean startsWithCSequence;
+
 
     public Result(Window window) {
         this.sequence = window.toPlain();
-        this.position = window.getPosition();
+        this.niceSequence = "";
+        this.startPosition = window.getPosition();
         this.length = window.getSize();
         this.model = "";
+        this.totalSpaces = 0;
+        this.cSequences = 0;
+        this.startsWithCSequence = (window.get(0) == Nucleotide.C && window.get(1) == Nucleotide.C);
+
         this.score = countScore(window);
     }
 
@@ -24,26 +35,85 @@ public class Result {
         int length = window.getSize();
 
         byte cCounter = 0;
-        byte spaces = 0;
+        byte tempSpaces = 0;
+        byte spaceSequences = 0;
 
         for (int i = 0; i < length; i++){
+            endPosition = i;
 
             Nucleotide nucleotide = window.get(i);
+            Nucleotide nextNucleotide = getNextNucleotide(window, i, length);
 
-            if (nucleotide == Nucleotide.C){
-                cCounter += 1;
-                if (spaces != 0) {
-                    score += countSpaceBonus(spaces);
+            //Is it in the middle of sequence?
+            if (nextNucleotide != null) {
+                //Is it in the middle of C-sequence?
+                if (nucleotide == Nucleotide.C && nextNucleotide == Nucleotide.C){
+                    cCounter += 1;
+                    if (cCounter == 1) {
+                        cSequences += 1;
+                    }
+                    if (tempSpaces > 0) {
+                        niceSequence = niceSequence.concat("-");
+                        score += countSpaceBonus(tempSpaces);
+                    }
+                    tempSpaces = 0;
+                //Is it in the end of C-sequence?
+                } else if (nucleotide == Nucleotide.C && tempSpaces == 0) {
+                    cCounter += 1;
+                //Is it somewhere between C-sequences?
+                } else {
+                    tempSpaces += 1;
+                    this.totalSpaces += 1;
+
+                    if (tempSpaces == 1) {
+                        spaceSequences++;
+
+                        if (spaceSequences == 4) {
+                            if (cCounter > 1) {
+                                score += countCBonus(cCounter);
+                                addLengthOf(cCounter);
+                                this.totalSpaces -= 1;
+
+                                return score;
+                            }
+                        }
+                    }
+                    if (cCounter > 1) {
+                        niceSequence = niceSequence.concat("-");
+                        score += countCBonus(cCounter);
+                        addLengthOf(cCounter);
+                    }
+                    cCounter = 0;
                 }
-                spaces = 0;
+            //Last Nucleotide in a whole sequence
             } else {
-                spaces += 1;
-                if (cCounter > 1) {
-                    score += countCBonus(cCounter);
-                    addLengthOf(cCounter);
+                if (nucleotide == Nucleotide.C){
+                    cCounter += 1;
+                } else {
+                    tempSpaces += 1;
+                    this.totalSpaces += 1;
+                    if (cCounter > 1) {
+                        spaceSequences++;
+                        score += countCBonus(cCounter);
+                        addLengthOf(cCounter);
+
+                        if (spaceSequences < 4) {
+                            niceSequence = niceSequence.concat("-");
+
+                        } else {
+                            totalSpaces -= 1;
+                            return score;
+                        }
+
+                    }
+
+                    cCounter = 0;
                 }
-                cCounter = 0;
             }
+
+            niceSequence = niceSequence.concat(Character.toString(sequence.charAt(i)));
+
+
         }
 
         if (cCounter!= 0) {
@@ -51,26 +121,11 @@ public class Result {
             addLengthOf(cCounter);
         }
 
-        if (spaces!= 0) {
-            score += countSpaceBonus(spaces);
-        }
+//        if (tempSpaces!= 0) {
+//            score += countSpaceBonus(tempSpaces);
+//        }
 
         return score;
-    }
-
-    private void addLengthOf(int countOfC) {
-        if (this.model.isEmpty())
-            this.model += countOfC;
-        else
-            this.model += "-" + countOfC;
-    }
-
-    public Double getScore() {
-        return score;
-    }
-
-    public String getModel() {
-        return model;
     }
 
     private Double countCBonus(int cCounter) {
@@ -158,15 +213,75 @@ public class Result {
         }
     }
 
+    private Nucleotide getNextNucleotide(Window window, int i, int length) {
+        Nucleotide nucleotide = null;
+
+        if (i < length - 1) {
+            nucleotide = window.get(i+1);
+        }
+
+        return nucleotide;
+    }
+
+    private void addLengthOf(int countOfC) {
+        if (this.model.isEmpty())
+            this.model += countOfC;
+        else
+            this.model += "-" + countOfC;
+    }
+
+
+    public String getSequence() {
+        return sequence;
+    }
+
+    public String getNiceSequence() {
+        return niceSequence;
+    }
+
+    public Double getScore() {
+        return score;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public Integer getCSequences() {
+        return cSequences;
+    }
+
+    public Integer getStartPosition() {
+        return startPosition;
+    }
+
+    public Integer getEndPosition() {
+        return endPosition;
+    }
+
+    public Boolean startsWithCSequence() {
+        return startsWithCSequence;
+    }
+
+    public Boolean isIMotif() {
+        return
+                (
+                        this.cSequences == 4
+                        && this.getScore() >= 5
+                        && this.totalSpaces <= 36
+                );
+    }
 
     @Override
     public String toString() {
         return "Result{" +
-                "sequence='" + sequence + '\'' +
-                ", position=" + position +
-                ", length=" + length +
-                ", score=" + score +
-                ", model='" + model + '\'' +
+                "sequence = '" + niceSequence + '\'' +
+                ", position = " + startPosition +
+                ", length = " + length +
+                ", score = " + Math.round(score * Math.pow(10, 2)) / Math.pow(10, 2) +
+                ", model = '" + model + '\'' +
+                ", spaces = " + totalSpaces +
+                ", C-sequences = " + cSequences +
                 '}';
     }
 }

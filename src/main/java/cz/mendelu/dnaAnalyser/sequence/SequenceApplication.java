@@ -7,6 +7,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
+import java.util.List;
 import java.util.Optional;
 
 @SpringBootApplication
@@ -19,17 +20,20 @@ public class SequenceApplication {
     @Bean
     public CommandLineRunner demo_open_and_print(WindowStreamService windowStreamService) {
         return args -> {
-            // Create Cequence file:
-            Sequence sequence = new Sequence("bda6050a-8f6b-11ea-bc55-0242ac130003", SequenceType.DNA, false);
+            // Create Sequence file:
+            Sequence sequence = new Sequence("cdeb6610-9521-11ea-bb37-0242ac130002", SequenceType.DNA, false);
 
-            // Open windows Stream with windows size 3
             WindowStream windowStream = windowStreamService.open(sequence, 31).get();
 
             // Print each triple nuclide to std out.
-            System.out.println("Print windows stream");
+//            System.out.println("Print windows stream");
             windowStream.forEach(window -> {
                 Result result = new Result(window);
-                System.out.println(result.toString());
+
+                if(result.isIMotif()) {
+                    System.out.println(result.toString());
+                }
+
             });
             System.out.println("----------");
         };
