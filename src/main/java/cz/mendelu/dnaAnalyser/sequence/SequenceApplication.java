@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Bean;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @SpringBootApplication
@@ -20,6 +22,8 @@ public class SequenceApplication {
 
     @Bean
     public CommandLineRunner demo_open_and_print(WindowStreamService windowStreamService) {
+
+        ExecutorService executor = Executors.newFixedThreadPool(4);
         return args -> {
             long startTime = System.nanoTime();
             // Create Sequence file:
@@ -30,14 +34,20 @@ public class SequenceApplication {
 //            System.out.println("Print windows stream");
 
             long startTimeForEach = System.nanoTime();
-            windowStream.forEach(window -> {
-                Result result = new Result(window);
 
-                if(result.isIMotif()) {
-                    System.out.println(result.toString());
-                }
+            windowStream.forEach(
+                    window -> {
+                        executor.submit(()-> {
+                            Result result = new Result(window);
 
-            });
+                            if(result.isIMotif()) {
+                                System.out.println(result.toString());
+                            }
+                        });
+
+
+                    });
+            executor.shutdown();
             long endTimeForEach = System.nanoTime();
 
             System.out.println("----------");
