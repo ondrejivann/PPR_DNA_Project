@@ -22,14 +22,14 @@ public class SequenceApplication {
     public CommandLineRunner demo_open_and_print(WindowStreamService windowStreamService) {
         return args -> {
             long startTime = System.nanoTime();
-            long startTimeReadFile = System.nanoTime();
             // Create Sequence file:
             Sequence sequence = new Sequence("cdeb6610-9521-11ea-bb37-0242ac130002", SequenceType.DNA, false);
-            long endTimeReadFile = System.nanoTime();
             WindowStream windowStream = windowStreamService.open(sequence, 31).get();
 
             // Print each triple nuclide to std out.
 //            System.out.println("Print windows stream");
+
+            long startTimeForEach = System.nanoTime();
             windowStream.forEach(window -> {
                 Result result = new Result(window);
 
@@ -37,19 +37,20 @@ public class SequenceApplication {
                     System.out.println(result.toString());
                 }
 
-
             });
+            long endTimeForEach = System.nanoTime();
+
             System.out.println("----------");
             long endTime = System.nanoTime();
             long timeElapsed = endTime - startTime;
-            long timeElapsedReadFile = endTimeReadFile - startTimeReadFile;
+            long timeElapsedForEach = endTimeForEach - startTimeForEach;
 
             double elapsedTimeInSecond = (double) timeElapsed / 1_000_000_000;
-            double elapsedTimeInSecondReadFile = (double) timeElapsedReadFile / 1_000_000_000;
+            double elapsedTimeInSecondReadFile = (double) timeElapsedForEach / 1_000_000_000;
 
-            System.out.println("Execution Readiging File time in seconds: " + elapsedTimeInSecondReadFile);
+            System.out.println("Execution ForEach time in milliseconds: " + timeElapsedForEach / 1000000);
+            System.out.println("Execution ForEach time in seconds: " + elapsedTimeInSecondReadFile);
             System.out.println("----------");
-            System.out.println("Execution time in nanoseconds: " + timeElapsed);
             System.out.println("Execution time in milliseconds: " + timeElapsed / 1000000);
             System.out.println("Execution time in seconds: " + elapsedTimeInSecond);
         };
