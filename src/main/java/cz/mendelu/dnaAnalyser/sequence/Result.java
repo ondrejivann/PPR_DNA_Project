@@ -14,6 +14,7 @@ public class Result {
     private Integer totalSpaces;
 
     private Boolean startsWithCSequence;
+    private Window window;
 
 
     public Result(Window window) {
@@ -26,10 +27,14 @@ public class Result {
         this.cSequences = 0;
         this.startsWithCSequence = (window.get(0) == Nucleotide.C && window.get(1) == Nucleotide.C);
 
-        this.score = countScore(window);
+        this.window = window;
     }
 
-    private Double countScore(Window window) {
+    public void setScore() {
+        this.score = countScore(this.window);
+    }
+
+    public Double countScore(Window window) {
         Double score = 0.0;
 
         int length = window.getSize();
@@ -253,6 +258,10 @@ public class Result {
 
     public Integer getStartPosition() {
         return startPosition;
+    }
+
+    public Integer getLength() {
+        return length;
     }
 
     public Integer getEndPosition() {
