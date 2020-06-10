@@ -1,5 +1,9 @@
 package cz.mendelu.dnaAnalyser.sequence;
+
 import cz.mendelu.dnaAnalyser.sequence.stream.Window;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Result {
 
@@ -270,6 +274,19 @@ public class Result {
                         && this.getScore() >= 5
                         && this.totalSpaces <= 36
                 );
+    }
+
+    public List<String> resultToStringList(){
+
+        List<String> list = new ArrayList<>();
+
+        //list.add(this.sequence);
+        list.add(this.startPosition.toString());
+        list.add(this.length.toString());
+        list.add(this.score.toString());
+        list.add(this.model);
+
+        return list;
     }
 
     @Override

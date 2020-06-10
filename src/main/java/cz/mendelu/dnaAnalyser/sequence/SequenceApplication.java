@@ -1,90 +1,102 @@
 package cz.mendelu.dnaAnalyser.sequence;
 
-import cz.mendelu.dnaAnalyser.sequence.stream.WindowStreamService;
 import cz.mendelu.dnaAnalyser.sequence.stream.WindowStream;
+import cz.mendelu.dnaAnalyser.sequence.stream.WindowStreamService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.time.LocalTime;
+import java.util.AbstractList;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 @SpringBootApplication
 public class SequenceApplication {
+
+    private static String CSV_FILE_NAME = "iMotiveResults";
+    private static String LONG_FILE = "cdeb6610-9521-11ea-bb37-0242ac130002";
+    private static String SHORT_FILE = "eb50a995-a044-4f33-8ffa-5b184750b120";
+
+    private  static List<Result> results;
+    private  static List<Long> timeStamps = new ArrayList<>();
 
     public static void main(String[] args) {
         SpringApplication.run(SequenceApplication.class, args);
     }
 
     @Bean
-    public CommandLineRunner demo_open_and_print(WindowStreamService windowStreamService) {
-
-        ExecutorService executor = Executors.newFixedThreadPool(4);
+    public CommandLineRunner work(WindowStreamService windowStreamService) {
         return args -> {
-            long startTime = System.nanoTime();
-            // Create Sequence file:
-            Sequence sequence = new Sequence("cdeb6610-9521-11ea-bb37-0242ac130002", SequenceType.DNA, false);
-            WindowStream windowStream = windowStreamService.open(sequence, 31).get();
 
-            // Print each triple nuclide to std out.
-//            System.out.println("Print windows stream");
+            timeStamps.add(System.currentTimeMillis());
 
-            long startTimeForEach = System.nanoTime();
+            // Prepare section
+            Sequence sequence = new Sequence(SHORT_FILE, SequenceType.DNA, false);
 
-            windowStream.forEach(
-                    window -> {
-                        executor.submit(()-> {
-                            Result result = new Result(window);
+            timeStamps.add(System.currentTimeMillis());
 
-                            if(result.isIMotif()) {
-                                System.out.println(result.toString());
-                            }
-                        });
+            // Process section
+            results = new ArrayList<>();
 
+            for (int i = 11; i < 50; i++){
+                WindowStream windowStream = windowStreamService.open(sequence, i).get();
 
-                    });
-            executor.shutdown();
-            long endTimeForEach = System.nanoTime();
+                windowStream.forEach(window -> {
+                    Result result = new Result(window);
+                    if (result.isIMotif()){
+                        results.add(result);
+                    }
+                });
+            }
 
-            System.out.println("----------");
-            long endTime = System.nanoTime();
-            long timeElapsed = endTime - startTime;
-            long timeElapsedForEach = endTimeForEach - startTimeForEach;
+            timeStamps.add(System.currentTimeMillis());
 
-            double elapsedTimeInSecond = (double) timeElapsed / 1_000_000_000;
-            double elapsedTimeInSecondReadFile = (double) timeElapsedForEach / 1_000_000_000;
+            // Writing section
+            writeToCSVFile();
 
-            System.out.println("Execution ForEach time in milliseconds: " + timeElapsedForEach / 1000000);
-            System.out.println("Execution ForEach time in seconds: " + elapsedTimeInSecondReadFile);
-            System.out.println("----------");
-            System.out.println("Execution time in milliseconds: " + timeElapsed / 1000000);
-            System.out.println("Execution time in seconds: " + elapsedTimeInSecond);
+            timeStamps.add(System.currentTimeMillis());
+
+            printTimes();
         };
     }
 
-    /*
-    @Bean
-    public CommandLineRunner demo_filter_by_start_Nucleotide(WindowStreamService windowStreamService) {
-        return args -> {
-            // Create Cequence file:
-            Sequence s = new Sequence("5f9a8c63-71da-47c5-9130-31863476de9d", SequenceType.DNA, false);
-
-            // Open windows Stream with windows size 3
-            WindowStream windowStream = windowStreamService.open(s, 5).get();
-
-            // Print each triple nuclide to std out.
-            System.out.println("Print windows start with A");
-            windowStream
-                    .filter(w -> w.get(0) == Nucleotide.A)
-                    .forEach(System.out::println);
-            System.out.println("----------");
-        };
+    private static void writeToCSVFile() {
+        String filename = LocalTime.now().toString().replace(":","-");
+        final FileWriter writer;
+        try {
+            writer = new FileWriter(CSV_FILE_NAME + filename + ".csv");
+            results.forEach(result -> {
+                try {
+                    CSVUtils.writeLine(writer, result.resultToStringList());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
-     */
+    private static void printTimes() {
+        long preparingWindowStreamTime = timeStamps.get(1) - timeStamps.get(0);
+        long processingTime = timeStamps.get(2) - timeStamps.get(1);
+        long writingTime = timeStamps.get(3) - timeStamps.get(2);
+        long totalTime = timeStamps.get(3) - timeStamps.get(0);
 
+        float preparingWindowStreamTimePercentage = (((float) preparingWindowStreamTime)/totalTime)*100;
+        float processingTimePercentage = (((float) processingTime)/totalTime)*100;
+        float writingTimePercentage = (((float) writingTime)/totalTime)*100;
+
+        System.out.println("Preparing window stream: " + preparingWindowStreamTime + " ms" + " In percentage: " + preparingWindowStreamTimePercentage + " %");
+        System.out.println("Processing time: " + processingTime + " ms" + " In percentage: " + processingTimePercentage + " %");
+        System.out.println("Writing time: " + writingTime + " ms" + " In percentage: " + writingTimePercentage + " %");
+        System.out.println("Total time: " + totalTime + " ms");
+    }
 }
