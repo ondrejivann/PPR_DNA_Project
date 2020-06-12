@@ -7,14 +7,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
-import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.time.LocalTime;
-import java.util.AbstractList;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @SpringBootApplication
@@ -38,14 +34,14 @@ public class SequenceApplication {
             timeStamps.add(System.currentTimeMillis());
 
             // Prepare section
-            Sequence sequence = new Sequence(SHORT_FILE, SequenceType.DNA, false);
+            Sequence sequence = new Sequence(LONG_FILE, SequenceType.DNA, false);
 
             timeStamps.add(System.currentTimeMillis());
 
             // Process section
             results = new ArrayList<>();
 
-            for (int i = 11; i < 50; i++){
+            for (int i = 20; i < 23; i++){
                 WindowStream windowStream = windowStreamService.open(sequence, i).get();
 
                 windowStream.forEach(window -> {
