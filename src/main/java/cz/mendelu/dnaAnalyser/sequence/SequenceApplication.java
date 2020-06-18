@@ -95,4 +95,5 @@ public class SequenceApplication {
         System.out.println("Writing time: " + writingTime + " ms" + " In percentage: " + writingTimePercentage + " %");
         System.out.println("Total time: " + totalTime + " ms");
     }
+
 }

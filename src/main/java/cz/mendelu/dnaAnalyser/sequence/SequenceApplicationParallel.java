@@ -15,6 +15,7 @@ import java.util.concurrent.*;
 
 @SpringBootApplication
 public class SequenceApplicationParallel {
+
     private static String CSV_FILE_NAME = "iMotiveResults";
     private static String LONG_FILE = "cdeb6610-9521-11ea-bb37-0242ac130002";
     private static String SHORT_FILE = "eb50a995-a044-4f33-8ffa-5b184750b120";
@@ -33,9 +34,9 @@ public class SequenceApplicationParallel {
 
             Sequence sequence = new Sequence(SHORT_FILE, SequenceType.DNA, false);
 
-            new Thread(() -> {
+           new Thread(() -> {
                 for (int i = 11; i < 50; i++){
-                    WindowStream windowStream = windowStreamService.open(sequence, 20).get();
+                    WindowStream windowStream = windowStreamService.open(sequence, i).get();
                     windowStream.forEach(window -> {
                         final Window w = window;
                         try {
@@ -45,7 +46,7 @@ public class SequenceApplicationParallel {
                         }
                     });
                 }
-            }, "producer").start();
+           }, "producer").start();
 
             Thread writing = new Thread(() -> {
                 String filename = LocalTime.now().toString().replace(":","-");
@@ -65,7 +66,7 @@ public class SequenceApplicationParallel {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-            },"consument");
+            },"consumer");
 
             writing.start();
             writing.join();
@@ -74,4 +75,6 @@ public class SequenceApplicationParallel {
 
         };
     }
+
+
 }
