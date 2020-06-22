@@ -40,6 +40,27 @@ public class SequenceApplication {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        fileWriter.flush();
+        fileWriter.close();
+
+        bufferedWriter.flush();
+        bufferedWriter.close();
+    }
+
+    private void writeParallelResultsToFile(int i, long timeElapsedForEach) throws IOException {
+        File parallelFile = new File("data/paralleldata.csv");
+
+
+        FileWriter fw = new FileWriter(parallelFile, true);
+
+        String data = i + ", " + timeElapsedForEach;
+
+        fw.append(data + "\n");
+        fw.flush();
+        fw.close();
+
+
     }
 
     public static void main(String[] args) {
@@ -49,76 +70,85 @@ public class SequenceApplication {
     @Bean
     public CommandLineRunner demo_open_and_print(WindowStreamService windowStreamService) {
 
-        ExecutorService executor = Executors.newFixedThreadPool(4);
+
+
+
 //        ExecutorService executor = Executors.newSingleThreadExecutor();
-        return args -> {
-            long startTime = System.nanoTime();
-            List<Result> resultList = new ArrayList<>();
+            return args -> {
+                for (int i = 1; i <= 100; i++) {
 
-            // Create Sequence file:
-            Sequence sequence = new Sequence("c116daa3-b59f-4085-955c-ba99194cc235", SequenceType.DNA, false);
-            WindowStream windowStream = windowStreamService.open(sequence, 31).get();
+                    ExecutorService executor = Executors.newFixedThreadPool(i);
+                    long startTime = System.nanoTime();
+                    List<Result> resultList = new ArrayList<>();
 
-            // Print each triple nuclide to std out.
+                    // Create Sequence file:
+                    Sequence sequence = new Sequence("c116daa3-b59f-4085-955c-ba99194cc235", SequenceType.DNA, false);
+                    WindowStream windowStream = windowStreamService.open(sequence, 31).get();
+
+                    // Print each triple nuclide to std out.
 //            System.out.println("Print windows stream");
 
-            long startTimeForEach = System.nanoTime();
+                    long startTimeForEach = System.nanoTime();
 
-            windowStream.forEach(
+                    windowStream.forEach(
 
-                    window -> {
-                        Result result = new Result(window);
-                        result.setScore();
-                        executor.submit(()-> {
-                            if(result.isIMotif()) {
-                                System.out.println(result.toString());
-                                resultList.add(result);
-                            }
-                        });
+                            window -> {
+                                Result result = new Result(window);
+                                result.setScore();
+                                executor.submit(() -> {
+                                    if (result.isIMotif()) {
+//                                        System.out.println(result.toString());
+                                        resultList.add(result);
+                                    }
+                                });
 
 
-                    });
+                            });
 //            executor.shutdown();
 
 
-            try {
-                System.out.println("attempt to shutdown executor");
-                executor.shutdown();
-                executor.awaitTermination(5, TimeUnit.SECONDS);
-            }
-            catch (InterruptedException e) {
-                System.err.println("tasks interrupted");
-            }
-            finally {
-                if (!executor.isTerminated()) {
-                    System.err.println("cancel non-finished tasks");
+                    try {
+                        System.out.println("attempt to shutdown executor");
+                        executor.shutdown();
+                        executor.awaitTermination(5, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        System.err.println("tasks interrupted");
+                    } finally {
+                        if (!executor.isTerminated()) {
+                            System.err.println("cancel non-finished tasks");
+                        }
+                        executor.shutdownNow();
+                        System.out.println("shutdown finished");
+
+                        long endTimeForEach = System.nanoTime();
+
+                        System.out.println("Number of threads: " + i);
+                        System.out.println("----------");
+                        long endTime = System.nanoTime();
+                        long timeElapsed = endTime - startTime;
+                        long timeElapsedForEach = endTimeForEach - startTimeForEach;
+
+                        double elapsedTimeInSecond = (double) timeElapsed / 1_000_000_000;
+                        double elapsedTimeInSecondReadFile = (double) timeElapsedForEach / 1_000_000_000;
+
+                        System.out.println("Execution ForEach time in milliseconds: " + timeElapsedForEach / 1000000);
+                        System.out.println("Execution ForEach time in seconds: " + elapsedTimeInSecondReadFile);
+                        System.out.println("----------");
+                        System.out.println("Execution time in milliseconds: " + timeElapsed / 1000000);
+                        System.out.println("Execution time in seconds: " + elapsedTimeInSecond);
+                        System.out.println("Found iMotifs: " + resultList.size());
+
+//                        writeResultsToFile(resultList, "data/results.txt");
+                        writeParallelResultsToFile(i, timeElapsedForEach / 1000000);
+
+                    }
                 }
-                executor.shutdownNow();
-                System.out.println("shutdown finished");
 
-                long endTimeForEach = System.nanoTime();
+            };
 
-                System.out.println("----------");
-                long endTime = System.nanoTime();
-                long timeElapsed = endTime - startTime;
-                long timeElapsedForEach = endTimeForEach - startTimeForEach;
-
-                double elapsedTimeInSecond = (double) timeElapsed / 1_000_000_000;
-                double elapsedTimeInSecondReadFile = (double) timeElapsedForEach / 1_000_000_000;
-
-                System.out.println("Execution ForEach time in milliseconds: " + timeElapsedForEach / 1000000);
-                System.out.println("Execution ForEach time in seconds: " + elapsedTimeInSecondReadFile);
-                System.out.println("----------");
-                System.out.println("Execution time in milliseconds: " + timeElapsed / 1000000);
-                System.out.println("Execution time in seconds: " + elapsedTimeInSecond);
-                System.out.println("Found iMotifs: " + resultList.size());
-
-                writeResultsToFile(resultList, "data/results.txt");
-
-            }
-
-        };
     }
+
+
 
 
 
